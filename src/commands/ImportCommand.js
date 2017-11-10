@@ -159,6 +159,9 @@ export default class ImportCommand extends Command {
 
   execute(callback) {
     const tracker = this.logger.newItem("execute");
+    const applyOpts = Object.assign({}, this.execOpts, {
+      stdio: "pipe", // needs stdin, which is usually ignored
+    });
 
     tracker.addWork(this.commits.length);
 
@@ -166,12 +169,13 @@ export default class ImportCommand extends Command {
       tracker.info(sha);
 
       const patch = this.createPatchForCommit(sha);
+
       // Apply the modified patch to the current lerna repository, preserving
       // original commit date, author and message.
       //
       // Fall back to three-way merge, which can help with duplicate commits
       // due to merge history.
-      ChildProcessUtilities.exec("git", ["am", "-3"], this.execOpts, (err) => {
+      const cmd = ChildProcessUtilities.exec("git", ["am", "-3"], applyOpts, (err) => {
         if (err) {
           const isEmptyCommit = err.stdout.indexOf("Patch is empty.") === 0;
           if (isEmptyCommit) {
@@ -195,7 +199,9 @@ export default class ImportCommand extends Command {
         tracker.completeWork(1);
 
         done(err);
-      }).stdin.end(patch);
+      });
+
+      cmd.stdin.end(patch);
     }), (err) => {
       tracker.finish();
 

@@ -1,10 +1,15 @@
 import { EOL } from "os";
 import log from "npmlog";
 import path from "path";
+
 // mocked modules
 import writePkg from "write-pkg";
 import ChildProcessUtilities from "../src/ChildProcessUtilities";
 import FileSystemUtilities from "../src/FileSystemUtilities";
+
+// helpers
+import callsBack from "./helpers/callsBack";
+
 // file under test
 import NpmUtilities from "../src/NpmUtilities";
 
@@ -137,6 +142,22 @@ describe("NpmUtilities", () => {
       };
       expect(ChildProcessUtilities.exec).lastCalledWith(cmd, scriptArgs, opts, expect.any(Function));
     });
+
+    it("sets opts.stdio = pipe when callback expects stdout", (done) => {
+      ChildProcessUtilities.exec.mockImplementation(callsBack(null, "yay"));
+      expect.assertions(2);
+      const directory = "/test/withPipedStdio";
+
+      NpmUtilities.runScriptInDir("foo", [], directory, (err, stdout) => {
+        const opts = {
+          cwd: directory,
+          stdio: "pipe",
+        };
+        expect(ChildProcessUtilities.exec).lastCalledWith("npm", ["run", "foo"], opts, expect.any(Function));
+        expect(stdout).toBe("yay");
+        done();
+      });
+    });
   });
 
   describe(".runScriptInDirSync()", () => {
@@ -251,7 +272,7 @@ describe("NpmUtilities", () => {
   describe(".installInDir()", () => {
     beforeEach(() => {
       stubExecOpts();
-      ChildProcessUtilities.exec.mockImplementation(() => Promise.resolve());
+      ChildProcessUtilities.exec.mockImplementation(callsBack());
       FileSystemUtilities.rename.mockImplementation((...args) => args.pop()());
       writePkg.mockImplementation(() => Promise.resolve());
     });
@@ -295,7 +316,7 @@ describe("NpmUtilities", () => {
           expect(ChildProcessUtilities.exec).lastCalledWith("npm", ["install"], {
             directory,
             registry: undefined,
-          });
+          }, expect.any(Function));
 
           done();
         } catch (ex) {
@@ -331,7 +352,7 @@ describe("NpmUtilities", () => {
           expect(ChildProcessUtilities.exec).lastCalledWith("npm", ["install"], {
             directory,
             registry,
-          });
+          }, expect.any(Function));
 
           done();
         } catch (ex) {
@@ -369,7 +390,8 @@ describe("NpmUtilities", () => {
             {
               directory,
               registry: undefined,
-            }
+            },
+            expect.any(Function)
           );
 
           done();
@@ -409,7 +431,8 @@ describe("NpmUtilities", () => {
             {
               directory,
               registry: undefined,
-            }
+            },
+            expect.any(Function)
           );
 
           done();
@@ -448,7 +471,8 @@ describe("NpmUtilities", () => {
             {
               directory,
               registry: undefined,
-            }
+            },
+            expect.any(Function)
           );
 
           done();
@@ -489,7 +513,8 @@ describe("NpmUtilities", () => {
             {
               directory,
               registry: undefined,
-            }
+            },
+            expect.any(Function)
           );
 
           done();
@@ -600,9 +625,9 @@ describe("NpmUtilities", () => {
       ];
       const config = {};
 
-      ChildProcessUtilities.exec.mockImplementation(() => {
-        return Promise.reject(new Error("Unable to install dependency"));
-      });
+      ChildProcessUtilities.exec.mockImplementation(
+        callsBack(new Error("Unable to install dependency"))
+      );
 
       NpmUtilities.installInDir(directory, dependencies, config, (err) => {
         try {
@@ -629,7 +654,7 @@ describe("NpmUtilities", () => {
     afterEach(resetExecOpts);
 
     it("uses shared code path for install", (done) => {
-      ChildProcessUtilities.exec.mockImplementation(() => Promise.resolve());
+      ChildProcessUtilities.exec.mockImplementation(callsBack());
 
       const directory = path.normalize("/test/installInDirOriginalPackageJson");
       const config = {
@@ -648,7 +673,8 @@ describe("NpmUtilities", () => {
             {
               directory,
               registry: undefined,
-            }
+            },
+            expect.any(Function)
           );
 
           done();
@@ -659,8 +685,8 @@ describe("NpmUtilities", () => {
     });
 
     it("calls back with error when thrown", (done) => {
-      ChildProcessUtilities.exec.mockImplementation(() =>
-        Promise.reject(new Error("whoopsy-doodle"))
+      ChildProcessUtilities.exec.mockImplementation(
+        callsBack(new Error("whoopsy-doodle"))
       );
 
       const directory = path.normalize("/test/installInDirOriginalPackageJsonError");
@@ -678,7 +704,8 @@ describe("NpmUtilities", () => {
             {
               directory,
               registry: undefined,
-            }
+            },
+            expect.any(Function)
           );
 
           done();

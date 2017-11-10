@@ -92,7 +92,7 @@ export default class FileSystemUtilities {
 
         // We call this resolved CLI path in the "path/to/node path/to/cli <..args>"
         // pattern to avoid Windows hangups with shebangs (e.g., WSH can't handle it)
-        return ChildProcessUtilities.spawn(process.execPath, args, {}, (err) => {
+        return ChildProcessUtilities.exec(process.execPath, args, null, (err) => {
           log.verbose("rimraf", "removed", dirPath);
           callback(err);
         });

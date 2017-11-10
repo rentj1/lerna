@@ -13,7 +13,7 @@ function execInstall(directory, {
   npmClientArgs,
   npmGlobalStyle,
   mutex,
-}) {
+}, callback) {
   // build command, arguments, and options
   const opts = NpmUtilities.getExecOpts(directory, registry);
   const args = ["install"];
@@ -37,7 +37,7 @@ function execInstall(directory, {
   }
 
   log.silly("installInDir", [cmd, args]);
-  return ChildProcessUtilities.exec(cmd, args, opts);
+  ChildProcessUtilities.exec(cmd, args, opts, callback);
 }
 
 export default class NpmUtilities {
@@ -88,18 +88,16 @@ export default class NpmUtilities {
       log.silly("installInDir", "writing tempJson", tempJson);
       // Write out our temporary cooked up package.json and then install.
       writePkg(packageJson, tempJson)
-        .then(() => execInstall(directory, config))
-        .then(() => done(), done);
+        .then(() => execInstall(directory, config, done))
+        .catch(done);
     });
   }
 
   static installInDirOriginalPackageJson(directory, config, callback) {
     log.silly("installInDirOriginalPackageJson", directory);
 
-    return execInstall(directory, config)
-      .then(() => callback(), callback);
+    execInstall(directory, config, callback);
   }
-
 
   static addDistTag(directory, packageName, version, tag, registry) {
     log.silly("addDistTag", tag, version, packageName);
@@ -126,6 +124,10 @@ export default class NpmUtilities {
     log.silly("runScriptInDir", script, args, path.basename(directory));
 
     const opts = NpmUtilities.getExecOpts(directory);
+    if (callback.length > 1) {
+      opts.stdio = "pipe"; // some consumers care about stdout in callback
+    }
+
     ChildProcessUtilities.exec("npm", ["run", script, ...args], opts, callback);
   }
 

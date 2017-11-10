@@ -13,18 +13,10 @@ describe("ChildProcessUtilities", () => {
   });
 
   describe(".exec()", () => {
-    afterEach((done) => {
-      if (ChildProcessUtilities.getChildProcessCount()) {
-        ChildProcessUtilities.onAllExited(done);
-      } else {
-        done();
-      }
-    });
-
-    it("should execute a command in a child process and call the callback with the result", (done) => {
-      ChildProcessUtilities.exec("echo", ["foo"], null, (stderr, stdout) => {
+    it("executes command in a child process and passes stdout to callback result when piped", (done) => {
+      ChildProcessUtilities.exec("echo", ["foo"], { stdio: "pipe" }, (err, stdout) => {
         try {
-          expect(stderr).toBe(null);
+          expect(err).toBe(null);
           expect(stdout).toBe("foo");
           done();
         } catch (ex) {
@@ -33,11 +25,10 @@ describe("ChildProcessUtilities", () => {
       });
     });
 
-    it("passes an error object to callback when stdout maxBuffer exceeded", (done) => {
-      ChildProcessUtilities.exec("echo", ["wat"], { maxBuffer: 1 }, (stderr, stdout) => {
+    it("does not pipe stdout by default", (done) => {
+      ChildProcessUtilities.exec("echo", ["foo"], null, (err, stdout) => {
         try {
-          expect(String(stderr)).toBe("Error: stdout maxBuffer exceeded");
-          expect(stdout).toBeUndefined();
+          expect(stdout).toBe(undefined);
           done();
         } catch (ex) {
           done.fail(ex);
@@ -46,7 +37,7 @@ describe("ChildProcessUtilities", () => {
     });
 
     it("does not require a callback, instead returning a Promise", () => {
-      return ChildProcessUtilities.exec("echo", ["Promise"]).then((result) => {
+      return ChildProcessUtilities.exec("echo", ["Promise"], { stdio: "pipe" }).then((result) => {
         expect(result.stdout).toBe("Promise");
       });
     });
@@ -62,6 +53,20 @@ describe("ChildProcessUtilities", () => {
       });
     });
 
+    it("calls callback with error when process is killed", (done) => {
+      const cp = ChildProcessUtilities.exec("echo", ["foo"], {}, (err) => {
+        try {
+          expect(err.signal).toBe("SIGINT");
+          expect(err).toHaveProperty("stderr", "");
+          done();
+        } catch (ex) {
+          done.fail(ex);
+        }
+      });
+
+      cp.kill("SIGINT");
+    });
+
     it("passes Promise rejection through", () => {
       return ChildProcessUtilities.exec("theVeneratedVirginianVeteranWhoseMenAreAll", []).catch((err) => {
         expect(err.message).toMatch(/\btheVeneratedVirginianVeteranWhoseMenAreAll\b/);
@@ -69,10 +74,10 @@ describe("ChildProcessUtilities", () => {
     });
 
     it("registers child processes that are created", () => {
-      const echoOne = ChildProcessUtilities.exec("echo", ["one"]);
+      const echoOne = ChildProcessUtilities.exec("echo", ["one"], { stdio: "pipe" });
       expect(ChildProcessUtilities.getChildProcessCount()).toBe(1);
 
-      const echoTwo = ChildProcessUtilities.exec("echo", ["two"]);
+      const echoTwo = ChildProcessUtilities.exec("echo", ["two"], { stdio: "pipe" });
       expect(ChildProcessUtilities.getChildProcessCount()).toBe(2);
 
       return Promise.all([
@@ -93,6 +98,25 @@ describe("ChildProcessUtilities", () => {
       return child.then((result) => {
         expect(result.code).toBe(0);
         expect(result.signal).toBe(null);
+      });
+    });
+  });
+
+  describe(".onAllExited()", () => {
+    it("fires callback when all child processes have exited", (done) => {
+      const callback = jest.fn();
+
+      ChildProcessUtilities.exec("echo", ["-n"]);
+      ChildProcessUtilities.exec("echo", ["-n"], null, callback);
+      ChildProcessUtilities.exec("echo", ["-n"], null, callback);
+      ChildProcessUtilities.exec("echo", ["-n"]);
+
+      ChildProcessUtilities.onAllExited(() => {
+        // cheesy timeout lets contentious timers drain before asserting
+        setTimeout(() => {
+          expect(callback).toHaveBeenCalledTimes(2);
+          done();
+        }, 10);
       });
     });
   });

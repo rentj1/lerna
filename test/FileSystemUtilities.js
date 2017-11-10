@@ -99,21 +99,21 @@ describe("FileSystemUtilities", () => {
 
   describe(".rimraf()", () => {
     beforeEach(() => {
-      ChildProcessUtilities.spawn.mockImplementation(callsBack());
+      ChildProcessUtilities.exec.mockImplementation(callsBack());
     });
 
     it("calls rimraf CLI with arguments", (done) => {
       pathExists.mockImplementation(() => Promise.resolve(true));
       FileSystemUtilities.rimraf("rimraf/test", () => {
         try {
-          expect(ChildProcessUtilities.spawn).lastCalledWith(
+          expect(ChildProcessUtilities.exec).lastCalledWith(
             process.execPath,
             [
               require.resolve("rimraf/bin"),
               "--no-glob",
               path.normalize("rimraf/test/"),
             ],
-            {},
+            null,
             expect.any(Function)
           );
           done();
@@ -127,7 +127,7 @@ describe("FileSystemUtilities", () => {
       pathExists.mockImplementation(() => Promise.resolve(false));
       FileSystemUtilities.rimraf("rimraf/non-existent", () => {
         try {
-          expect(ChildProcessUtilities.spawn).not.toBeCalled();
+          expect(ChildProcessUtilities.exec).not.toBeCalled();
           done();
         } catch (ex) {
           done.fail(ex);
