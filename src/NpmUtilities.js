@@ -100,7 +100,6 @@ export default class NpmUtilities {
       .then(() => callback(), callback);
   }
 
-
   static addDistTag(directory, packageName, version, tag, registry) {
     log.silly("addDistTag", tag, version, packageName);
 
@@ -155,12 +154,14 @@ export default class NpmUtilities {
   static getExecOpts(directory, registry) {
     const opts = {
       cwd: directory,
+      env: Object.assign({}, process.env, {
+        LERNA_CWD: directory,
+      }),
+      extendEnv: false, // we already do it
     };
 
     if (registry) {
-      opts.env = Object.assign({}, process.env, {
-        npm_config_registry: registry,
-      });
+      opts.env.npm_config_registry = registry;
     }
 
     log.silly("getExecOpts", opts);

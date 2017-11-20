@@ -88,20 +88,6 @@ describe("ExecCommand", () => {
       }), expect.any(Function));
     });
 
-    it("should filter packages with `ignore`", async () => {
-      await lernaExec("ls", "--ignore", "package-1");
-
-      expect(ChildProcessUtilities.spawn).toHaveBeenCalledTimes(1);
-      expect(ChildProcessUtilities.spawn).lastCalledWith("ls", [], {
-        cwd: path.join(testDir, "packages/package-2"),
-        env: expect.objectContaining({
-          LERNA_PACKAGE_NAME: "package-2",
-        }),
-        reject: true,
-        shell: true,
-      }, expect.any(Function));
-    });
-
     it("should filter packages that are not updated with --since", async () => {
       UpdatedPackagesCollector.prototype.getUpdates = jest.fn(() => [{
         package: {
@@ -112,15 +98,7 @@ describe("ExecCommand", () => {
 
       await lernaExec("ls", "--since");
 
-      expect(ChildProcessUtilities.spawn).toHaveBeenCalledTimes(1);
-      expect(ChildProcessUtilities.spawn).lastCalledWith("ls", [], {
-        cwd: path.join(testDir, "packages/package-2"),
-        env: expect.objectContaining({
-          LERNA_PACKAGE_NAME: "package-2",
-        }),
-        reject: true,
-        shell: true,
-      }, expect.any(Function));
+      expect(calledInPackages()).toEqual(["package-2"]);
     });
 
     it("should run a command", async () => {
@@ -131,6 +109,24 @@ describe("ExecCommand", () => {
         "package-1",
         "package-2",
       ]);
+    });
+
+    it("passes custom environment variables and default options to command", async () => {
+      const pkgCwd = path.join(testDir, "packages/package-2");
+
+      await lernaExec("ls");
+
+      expect(ChildProcessUtilities.spawn).lastCalledWith("ls", [], {
+        cwd: pkgCwd,
+        env: expect.objectContaining({
+          LERNA_CWD: pkgCwd,
+          LERNA_PACKAGE_NAME: "package-2",
+          LERNA_ROOT_PATH: testDir,
+        }),
+        extendEnv: false,
+        reject: true,
+        shell: true,
+      }, expect.any(Function));
     });
 
     it("should run a command with parameters", async () => {

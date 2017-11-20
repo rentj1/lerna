@@ -122,6 +122,9 @@ describe("NpmUtilities", () => {
   });
 
   describe(".runScriptInDir()", () => {
+    beforeEach(stubExecOpts);
+    afterEach(resetExecOpts);
+
     it("runs an npm script in a directory", () => {
       const script = "foo";
       const args = ["--bar", "baz"];
@@ -132,14 +135,15 @@ describe("NpmUtilities", () => {
 
       const cmd = "npm";
       const scriptArgs = ["run", "foo", "--bar", "baz"];
-      const opts = {
-        cwd: directory,
-      };
+      const opts = { directory, registry: undefined };
       expect(ChildProcessUtilities.exec).lastCalledWith(cmd, scriptArgs, opts, expect.any(Function));
     });
   });
 
   describe(".runScriptInDirSync()", () => {
+    beforeEach(stubExecOpts);
+    afterEach(resetExecOpts);
+
     it("runs an npm script syncrhonously in a directory", () => {
       const script = "foo";
       const args = ["--bar", "baz"];
@@ -151,14 +155,15 @@ describe("NpmUtilities", () => {
 
       const cmd = "npm";
       const scriptArgs = ["run", "foo", "--bar", "baz"];
-      const opts = {
-        cwd: directory,
-      };
+      const opts = { directory, registry: undefined };
       expect(ChildProcessUtilities.execSync).lastCalledWith(cmd, scriptArgs, opts, expect.any(Function));
     });
   });
 
   describe(".runScriptInPackageStreaming()", () => {
+    beforeEach(stubExecOpts);
+    afterEach(resetExecOpts);
+
     it("runs an npm script in a package with streaming", () => {
       const script = "foo";
       const args = ["--bar", "baz"];
@@ -173,9 +178,7 @@ describe("NpmUtilities", () => {
       expect(ChildProcessUtilities.spawnStreaming).lastCalledWith(
         "npm",
         ["run", "foo", "--bar", "baz"],
-        {
-          cwd: pkg.location,
-        },
+        { directory: pkg.location, registry: undefined },
         "qux",
         expect.any(Function)
       );
@@ -217,34 +220,26 @@ describe("NpmUtilities", () => {
   });
 
   describe(".getExecOpts()", () => {
-    const originalEnv = Object.assign({}, process.env);
-    const mockEnv = {
-      mock_value: 1,
-    };
+    it("always assigns cwd and augmented env", () => {
+      const directory = "test-dir";
 
-    afterEach(() => {
-      process.env = originalEnv;
+      expect(NpmUtilities.getExecOpts(directory)).toMatchObject({
+        cwd: directory,
+        env: Object.assign({}, process.env, {
+          LERNA_CWD: directory,
+        }),
+        extendEnv: false,
+      });
     });
 
-    it("should handle environment variables properly", () => {
-      process.env = mockEnv;
-      const opts = NpmUtilities.getExecOpts("test_dir", "https://my-secure-registry/npm");
-      const want = {
-        cwd: "test_dir",
-        env: Object.assign({}, mockEnv, {
-          npm_config_registry: "https://my-secure-registry/npm"
-        })
-      };
-      expect(opts).toEqual(want);
-    });
+    it("optionally assigns env.npm_config_registry", () => {
+      const registry = "https://my-secure-registry/npm";
 
-    it("should handle missing environment variables", () => {
-      process.env = mockEnv;
-      const opts = NpmUtilities.getExecOpts("test_dir");
-      const want = {
-        cwd: "test_dir",
-      };
-      expect(opts).toEqual(want);
+      expect(NpmUtilities.getExecOpts("with-registry", registry)).toMatchObject({
+        env: {
+          npm_config_registry: registry
+        }
+      });
     });
   });
 
@@ -622,10 +617,7 @@ describe("NpmUtilities", () => {
   });
 
   describe(".installInDirOriginalPackageJson()", () => {
-    beforeEach(() => {
-      stubExecOpts();
-    });
-
+    beforeEach(stubExecOpts);
     afterEach(resetExecOpts);
 
     it("uses shared code path for install", (done) => {

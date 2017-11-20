@@ -111,6 +111,16 @@ describe("Command", () => {
       const command = new Command([], {}, REPO_PATH);
       expect(command.execOpts.cwd).toBe(REPO_PATH);
     });
+
+    it("has augmented env", () => {
+      const command = new Command([], {}, REPO_PATH);
+      expect(command.execOpts.extendEnv).toBe(false);
+      expect(command.execOpts.env).toMatchObject(
+        Object.assign({}, process.env, {
+          LERNA_CWD: REPO_PATH,
+        })
+      );
+    });
   });
 
   describe(".run()", () => {

@@ -143,8 +143,14 @@ export default class Command {
 
   get execOpts() {
     if (!this._execOpts) {
+      const { rootPath } = this.repository;
+
       this._execOpts = {
-        cwd: this.repository.rootPath,
+        cwd: rootPath,
+        env: Object.assign({}, process.env, {
+          LERNA_CWD: rootPath,
+        }),
+        extendEnv: false, // we already do it
       };
 
       if (this.options.maxBuffer) {
