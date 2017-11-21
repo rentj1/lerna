@@ -13,6 +13,7 @@ const LERNA_PKG_TGZ = path.resolve(LERNA_ROOTDIR, `lerna-${pkg.version}.tgz`);
 Shared constants for tests
 **/
 exports.LERNA_VERSION = pkg.version;
+exports.LERNA_ROOTDIR = LERNA_ROOTDIR;
 exports.LERNA_PKG_URL = fileUrl(LERNA_PKG_TGZ);
 exports.LERNA_BIN = path.resolve(LERNA_ROOTDIR, pkg.bin.lerna);
 
